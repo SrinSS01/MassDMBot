@@ -53,7 +53,7 @@ public class Events extends ListenerAdapter {
                                         Din cauza unor inconveniente , unul dintre membrii highstaffului din trecut, a banat majoritatea comunitatii de pe serverul de discord. Toti cei care ati fost in staff puteti reintra si va puteti primii gradele inapoi.
                                         Multumesc de atentie . Iti uram o zi fericita
                                         """).build()
-                        ).addActionRow(Button.link("https://discord.gg/ogromania", "Join server")).queue());
+                        ).addActionRow(Button.link("https://discord.gg/ogromania", "Join server")).queue(message -> LOGGER.info("Sent message to {}", user.getName())));
                     }
                 });
             }
