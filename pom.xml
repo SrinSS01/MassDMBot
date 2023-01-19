@@ -10,7 +10,6 @@
     </parent>
     <groupId>io.github.srinss01</groupId>
     <artifactId>MassDMBot</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
     <name>MassDMBot</name>
     <description>MassDMBot</description>
     <properties>

@@ -13,7 +13,7 @@ import static net.dv8tion.jda.api.requests.GatewayIntent.GUILD_VOICE_STATES;
 
 @Component
 public class Main implements CommandLineRunner {
-    @Value("${token}")
+    @Value("${botToken}")
     private String botToken;
 
     private final Events events;
