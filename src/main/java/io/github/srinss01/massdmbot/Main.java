@@ -14,7 +14,7 @@ import static net.dv8tion.jda.api.requests.GatewayIntent.GUILD_VOICE_STATES;
 @Component
 public class Main implements CommandLineRunner {
     @Value("${token}")
-    private String token;
+    private String botToken;
 
     private final Events events;
 
@@ -24,7 +24,7 @@ public class Main implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        JDABuilder.createDefault(token)
+        JDABuilder.createDefault(botToken)
                 .enableIntents(
                         GatewayIntent.GUILD_MEMBERS,
                         GatewayIntent.GUILD_PRESENCES,
