@@ -3,6 +3,7 @@ package io.github.srinss01.massdmbot;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.events.guild.GuildReadyEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.session.ReadyEvent;
@@ -14,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
@@ -22,6 +24,9 @@ public class Events extends ListenerAdapter {
     private String message;
     @Value("${link}")
     private String link;
+
+    @Value("${logChannelId}")
+    private String logChannelId;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Events.class);
     @Override
@@ -42,17 +47,14 @@ public class Events extends ListenerAdapter {
 
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
+        Guild guild = event.getGuild();
+        TextChannel logChannel = Objects.requireNonNull(guild).getTextChannelById(logChannelId);
         switch (event.getName()) {
             case "stop" -> {
                 event.reply("Shutting down bot now!").setEphemeral(true).queue();
                 event.getJDA().shutdown();
             }
             case "mass-dm" -> {
-                Guild guild = event.getGuild();
-                if (guild == null) {
-                    event.deferReply().queue();
-                    return;
-                }
                 event.reply("sent").setEphemeral(true).queue();
                 AtomicInteger counter = new AtomicInteger(1);
                 guild.getMembers().forEach(member -> {
@@ -67,9 +69,20 @@ public class Events extends ListenerAdapter {
                     }
                     User user = member.getUser();
                     if (!user.isBot() && user.getIdLong() != event.getJDA().getSelfUser().getIdLong()) {
-                        user.openPrivateChannel().queue(privateChannel -> privateChannel.sendMessageEmbeds(
-                                new EmbedBuilder().setDescription(message).build()
-                        ).addActionRow(Button.link(link, "Join server")).queue(message -> LOGGER.info("Sent message to {}", user.getName())));
+                        user.openPrivateChannel()
+                                .onSuccess(privateChannel ->
+                                        privateChannel.sendMessageEmbeds(
+                                            new EmbedBuilder().setDescription(message).build()
+                                        ).addActionRow(Button.link(link, "Join server"))
+                                        .queue(message -> LOGGER.info("Sent message to {}", user.getName())))
+                                .onErrorFlatMap(err -> {
+                                    if (logChannel != null) {
+                                        logChannel.sendMessage("Failed to send message to " + user.getAsTag()).queue();
+                                    }
+                                    event.getMessageChannel().sendMessage("Failed to send message to " + user.getAsTag()).queue();
+                                    return null;
+                                })
+                                .queue();
                         counter.getAndIncrement();
                     }
                 });
