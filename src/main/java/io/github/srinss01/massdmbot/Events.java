@@ -11,14 +11,24 @@ import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 public class Events extends ListenerAdapter {
+    @Value("${message}")
+    private String message;
+    @Value("${link}")
+    private String link;
+
     private static final Logger LOGGER = LoggerFactory.getLogger(Events.class);
     @Override
     public void onReady(ReadyEvent event) {
         LOGGER.info("{} is ready!!", event.getJDA().getSelfUser().getName());
+        LOGGER.info("Message: {}", message);
+        LOGGER.info("Link: {}", link);
     }
 
     @Override
@@ -44,16 +54,23 @@ public class Events extends ListenerAdapter {
                     return;
                 }
                 event.reply("sent").setEphemeral(true).queue();
+                AtomicInteger counter = new AtomicInteger(1);
                 guild.getMembers().forEach(member -> {
+                    if (counter.get() == 10) {
+                        try {
+                            Thread.sleep(10 * 60 * 1000);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        } finally {
+                            counter.set(1);
+                        }
+                    }
                     User user = member.getUser();
                     if (!user.isBot() && user.getIdLong() != event.getJDA().getSelfUser().getIdLong()) {
                         user.openPrivateChannel().queue(privateChannel -> privateChannel.sendMessageEmbeds(
-                                new EmbedBuilder().setDescription("""
-                                        Buna ziua . Doresc sa te invit pe noul server de discord OG Romania al lui Vladutz si Bogdiz
-                                        Din cauza unor inconveniente , unul dintre membrii highstaffului din trecut, a banat majoritatea comunitatii de pe serverul de discord. Toti cei care ati fost in staff puteti reintra si va puteti primii gradele inapoi.
-                                        Multumesc de atentie . Iti uram o zi fericita
-                                        """).build()
-                        ).addActionRow(Button.link("https://discord.gg/ogromania", "Join server")).queue(message -> LOGGER.info("Sent message to {}", user.getName())));
+                                new EmbedBuilder().setDescription(message).build()
+                        ).addActionRow(Button.link(link, "Join server")).queue(message -> LOGGER.info("Sent message to {}", user.getName())));
+                        counter.getAndIncrement();
                     }
                 });
             }
