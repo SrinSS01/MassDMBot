@@ -3,6 +3,7 @@ package io.github.srinss01.massdmbot;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.concrete.PrivateChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.events.guild.GuildReadyEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
@@ -10,6 +11,7 @@ import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import net.dv8tion.jda.api.requests.restaction.CacheRestAction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -47,7 +49,8 @@ public class Events extends ListenerAdapter {
 
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
-        Guild guild = event.getGuild();
+        Guild guild = Objects.requireNonNull(event.getGuild());
+        int maxMembers = guild.getMemberCount();
         TextChannel logChannel = Objects.requireNonNull(guild).getTextChannelById(logChannelId);
         switch (event.getName()) {
             case "stop" -> {
@@ -58,32 +61,29 @@ public class Events extends ListenerAdapter {
                 event.reply("sent").setEphemeral(true).queue();
                 AtomicInteger counter = new AtomicInteger(1);
                 guild.getMembers().forEach(member -> {
-                    if (counter.get() == 10) {
+                    if (counter.get() % 10 == 0) {
                         try {
                             Thread.sleep(10 * 60 * 1000);
                         } catch (InterruptedException e) {
                             e.printStackTrace();
-                        } finally {
-                            counter.set(1);
                         }
                     }
                     User user = member.getUser();
                     if (!user.isBot() && user.getIdLong() != event.getJDA().getSelfUser().getIdLong()) {
-                        user.openPrivateChannel()
+                        CacheRestAction<PrivateChannel> privateChannelCacheRestAction = user.openPrivateChannel();
+                        privateChannelCacheRestAction
                                 .onSuccess(privateChannel ->
                                         privateChannel.sendMessageEmbeds(
                                             new EmbedBuilder().setDescription(message).build()
                                         ).addActionRow(Button.link(link, "Join server"))
-                                        .queue(message -> LOGGER.info("Sent message to {}", user.getName())))
-                                .onErrorFlatMap(err -> {
-                                    if (logChannel != null) {
-                                        logChannel.sendMessage("Failed to send message to " + user.getAsTag()).queue();
-                                    }
-                                    event.getMessageChannel().sendMessage("Failed to send message to " + user.getAsTag()).queue();
-                                    return null;
-                                })
+                                        .queue(message -> {
+                                            LOGGER.info("Sent message to {} [{}/{} users]", user.getName(), counter.get(), maxMembers);
+                                            if (logChannel != null) {
+                                                logChannel.sendMessageFormat("Sent message to %s `[%d/%d users]`", user.getAsTag(), counter.get(), maxMembers).queue();
+                                            }
+                                            counter.getAndIncrement();
+                                        }))
                                 .queue();
-                        counter.getAndIncrement();
                     }
                 });
             }

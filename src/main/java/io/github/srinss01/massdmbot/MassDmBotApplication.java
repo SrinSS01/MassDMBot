@@ -9,6 +9,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Scanner;
 
 @SpringBootApplication
 public class MassDmBotApplication {
@@ -26,16 +27,20 @@ public class MassDmBotApplication {
         }
         val properties = new File("config/application.yml");
         if (!properties.exists()) {
-            try (
-                    val url = MassDmBotApplication.class.getResourceAsStream("../../../../application.yml")
-            ) {
-                if (url == null) {
-                    return;
-                }
-                Files.copy(url, properties.toPath());
-                LOGGER.info("Created application.yml file");
-            }
-            return;
+            Scanner scanner = new Scanner(System.in);
+            System.out.print("Enter the bot token: ");
+            String token = scanner.nextLine();
+            System.out.print("Enter the message to send: ");
+            String message = scanner.nextLine();
+            System.out.print("Enter the link to the server invite: ");
+            String link = scanner.nextLine();
+            System.out.print("Enter the channel id to log the messages: ");
+            String logChannelId = scanner.nextLine();
+            String content = "botToken: " + token + '\n' +
+                             "message: " + message + '\n' +
+                             "link: " + link + '\n' +
+                             "logChannelId: " + logChannelId;
+            Files.writeString(properties.toPath(), content);
         }
         SpringApplication.run(MassDmBotApplication.class, args);
     }
